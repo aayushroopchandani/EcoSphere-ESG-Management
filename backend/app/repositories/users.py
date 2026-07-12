@@ -19,6 +19,7 @@ def _serialize_user(document: dict[str, Any]) -> UserRead:
         role=document.get("role", UserRole.EMPLOYEE),
         department_id=document.get("department_id"),
         xp=document.get("xp", 0),
+        points=document.get("points", 0),
         badges=document.get("badges", []),
         created_at=document["created_at"],
         updated_at=document["updated_at"],
@@ -73,11 +74,12 @@ async def upsert_user_from_clerk(
         set_fields["role"] = role.value
 
     insert_fields: dict[str, Any] = {
-        "clerk_user_id": clerk_user_id,
-        "xp": 0,
-        "badges": [],
-        "created_at": now,
-    }
+    "clerk_user_id": clerk_user_id,
+    "xp": 0,
+    "points": 0,
+    "badges": [],
+    "created_at": now,
+}
 
     if role is None:
         insert_fields["role"] = UserRole.EMPLOYEE.value

@@ -22,7 +22,11 @@ class UserRead(BaseModel):
     image_url: str | None = None
     role: UserRole = UserRole.EMPLOYEE
     department_id: str | None = None
+
     xp: int = Field(default=0, ge=0)
+    points: int = Field(default=0, ge=0)
+
     badges: list[str] = Field(default_factory=list)
+
     created_at: datetime
     updated_at: datetime
