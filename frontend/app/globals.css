@@ -43,3 +43,137 @@ body {
     linear-gradient(to bottom, rgba(148, 163, 184, 0.08) 1px, transparent 1px),
     linear-gradient(180deg, rgba(6, 78, 59, 0.24), transparent 34rem);
 }
+
+.governance-circuit-bg {
+  background-image:
+    linear-gradient(to right, rgba(15, 23, 42, 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(15, 23, 42, 0.055) 1px, transparent 1px),
+    repeating-linear-gradient(
+      135deg,
+      rgba(6, 182, 212, 0.08) 0 1px,
+      transparent 1px 22px
+    ),
+    linear-gradient(180deg, rgba(236, 253, 245, 0.72), transparent 36rem);
+  background-position:
+    0 0,
+    0 0,
+    0 0,
+    0 0;
+  background-size:
+    42px 42px,
+    42px 42px,
+    160px 160px,
+    100% 100%;
+  animation: governance-grid-drift 26s linear infinite;
+}
+
+.dark .governance-circuit-bg {
+  background-image:
+    linear-gradient(to right, rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+    repeating-linear-gradient(
+      135deg,
+      rgba(34, 211, 238, 0.09) 0 1px,
+      transparent 1px 22px
+    ),
+    linear-gradient(180deg, rgba(8, 47, 73, 0.24), transparent 36rem);
+}
+
+.governance-panel {
+  isolation: isolate;
+}
+
+.governance-panel::selection {
+  background: rgba(6, 182, 212, 0.24);
+}
+
+.governance-live-panel {
+  background-image:
+    linear-gradient(120deg, rgba(16, 185, 129, 0.1), transparent 34%),
+    linear-gradient(240deg, rgba(6, 182, 212, 0.13), transparent 42%);
+}
+
+.governance-scanline {
+  animation: governance-scan 4.8s ease-in-out infinite;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(6, 182, 212, 0.18),
+    transparent
+  );
+  inset: 0;
+  opacity: 0.8;
+  pointer-events: none;
+  position: absolute;
+  transform: translateX(-120%);
+  z-index: 0;
+}
+
+.animate-governance-rise {
+  animation: governance-rise 0.58s ease both;
+}
+
+.governance-bar {
+  animation: governance-bar-pulse 1.8s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@keyframes governance-grid-drift {
+  from {
+    background-position:
+      0 0,
+      0 0,
+      0 0,
+      0 0;
+  }
+  to {
+    background-position:
+      42px 42px,
+      42px 42px,
+      160px 0,
+      0 0;
+  }
+}
+
+@keyframes governance-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes governance-scan {
+  0%,
+  48% {
+    transform: translateX(-120%);
+  }
+  72%,
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+@keyframes governance-bar-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scaleY(0.55);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .governance-circuit-bg,
+  .animate-governance-rise,
+  .governance-bar,
+  .governance-scanline {
+    animation: none;
+  }
+}

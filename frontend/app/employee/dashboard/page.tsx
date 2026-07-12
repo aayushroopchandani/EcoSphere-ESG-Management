@@ -1,12 +1,26 @@
+import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
 import { currentUser } from "@clerk/nextjs/server";
 import { requireRole } from "@/lib/auth/roles";
 
 const employeeActions = [
-  ["CSR Activities", "Join activities and upload proof for approval"],
-  ["Challenges", "Complete sustainability challenges and earn XP"],
-  ["Policies", "Acknowledge ESG policies assigned by admins"],
-  ["Rewards", "Redeem earned points from the rewards catalog"],
+  {
+    description: "Join activities and upload proof for approval",
+    title: "CSR Activities",
+  },
+  {
+    description: "Complete sustainability challenges and earn XP",
+    title: "Challenges",
+  },
+  {
+    description: "Ask the policy copilot and acknowledge assigned governance policies",
+    href: "/employee/governance",
+    title: "Policies",
+  },
+  {
+    description: "Redeem earned points from the rewards catalog",
+    title: "Rewards",
+  },
 ];
 
 export default async function EmployeeDashboardPage() {
@@ -40,17 +54,34 @@ export default async function EmployeeDashboardPage() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          {employeeActions.map(([title, description]) => (
-            <article
-              key={title}
-              className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
-            >
-              <h3 className="text-lg font-semibold text-slate-950">{title}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                {description}
-              </p>
-            </article>
-          ))}
+          {employeeActions.map((action) =>
+            action.href ? (
+              <Link
+                className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
+                href={action.href}
+                key={action.title}
+              >
+                <h3 className="text-lg font-semibold text-slate-950">
+                  {action.title}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  {action.description}
+                </p>
+              </Link>
+            ) : (
+              <article
+                className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
+                key={action.title}
+              >
+                <h3 className="text-lg font-semibold text-slate-950">
+                  {action.title}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  {action.description}
+                </p>
+              </article>
+            ),
+          )}
         </div>
       </section>
     </main>

@@ -221,6 +221,14 @@ export function AdminDashboardClient({ userEmail }: { userEmail: string }) {
           </div>
           <div className="flex items-center gap-2">
             <Link
+              aria-label="Open governance policy copilot"
+              className="inline-flex size-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-0 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-cyan-300 hover:text-cyan-700 dark:border-white/10 dark:bg-slate-950 dark:text-slate-100 dark:hover:border-cyan-400 dark:hover:text-cyan-300 sm:w-auto sm:px-3"
+              href="/admin/governance"
+            >
+              <ShieldCheck size={16} />
+              <span className="hidden sm:inline">Governance</span>
+            </Link>
+            <Link
               aria-label="Open environmental carbon tracking"
               className="inline-flex size-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-0 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-emerald-300 hover:text-emerald-700 dark:border-white/10 dark:bg-slate-950 dark:text-slate-100 dark:hover:border-emerald-400 dark:hover:text-emerald-300 sm:w-auto sm:px-3"
               href="/admin/environment"

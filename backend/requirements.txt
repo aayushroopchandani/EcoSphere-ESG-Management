@@ -4,3 +4,8 @@ motor
 pydantic-settings
 PyJWT[crypto]
 email-validator
+python-multipart
+openai
+qdrant-client
+PyMuPDF
+cloudinary
