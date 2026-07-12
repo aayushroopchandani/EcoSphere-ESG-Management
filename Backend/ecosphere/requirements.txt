@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+beanie<2.0.0
+motor<4.0.0,>=2.5.0
+python-multipart
+requests
