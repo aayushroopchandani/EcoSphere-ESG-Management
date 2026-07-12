@@ -6,11 +6,13 @@ import { requireRole } from "@/lib/auth/roles";
 const employeeActions = [
   {
     description: "Join activities and upload proof for approval",
+    href: "/employee/activities",
     title: "CSR Activities",
   },
   {
-    description: "Complete sustainability challenges and earn XP",
-    title: "Challenges",
+    description: "View your XP, badges and see how you rank",
+    href: "/employee/leaderboard",
+    title: "Leaderboard",
   },
   {
     description: "Ask the policy copilot and acknowledge assigned governance policies",
@@ -18,8 +20,9 @@ const employeeActions = [
     title: "Policies",
   },
   {
-    description: "Redeem earned points from the rewards catalog",
-    title: "Rewards",
+    description: "Track your CSR participation history and approval status",
+    href: "/employee/my-participations",
+    title: "My Participations",
   },
 ];
 

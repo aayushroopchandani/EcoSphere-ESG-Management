@@ -1,6 +1,6 @@
 export type CSRStatus = "draft" | "active" | "completed" | "archived";
 
-export type CSRCategory = "environment" | "social" | "education" | "health";
+export type CSRCategory = "environment" | "social" | "education" | "health" | "other";
 
 export type ParticipationStatus = "pending" | "approved" | "rejected";
 

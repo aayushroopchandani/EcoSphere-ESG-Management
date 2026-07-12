@@ -77,9 +77,6 @@ class ParticipationCreate(BaseModel):
         return value.strip()
 
 
-class ParticipationReview(BaseModel):
-    status: ParticipationStatus
-
 
 class ParticipationRead(BaseModel):
     id: str
@@ -102,16 +99,21 @@ class ParticipationRead(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+
 class ParticipationReviewRequest(BaseModel):
     approved: bool
 
 
 class LeaderboardUser(BaseModel):
+    rank: int
     clerk_user_id: str
     first_name: str | None = None
     last_name: str | None = None
     email: str | None = None
     xp: int
+    points: int = 0
+    badges: list[str] = []
+
 
 class GamificationMeRead(BaseModel):
     clerk_user_id: str

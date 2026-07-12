@@ -3,10 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
-import type {
-  CreateCSRActivityPayload,
-  CSRActivity,
-} from "@/features/social/types/social";
+import type { CreateCSRActivityPayload } from "@/features/social/types/social";
 
 interface ActivityFormProps {
   onCreate: (payload: CreateCSRActivityPayload) => Promise<void>;
@@ -72,7 +69,7 @@ export function ActivityForm({ onCreate, isSubmitting }: ActivityFormProps) {
           onChange={(e) =>
             setForm({
               ...form,
-              category: e.target.value as CSRActivity["category"],
+              category: e.target.value as CreateCSRActivityPayload["category"],
             })
           }
         >
@@ -83,6 +80,8 @@ export function ActivityForm({ onCreate, isSubmitting }: ActivityFormProps) {
           <option value="education">Education</option>
 
           <option value="health">Health</option>
+
+          <option value="other">Other</option>
         </select>
 
         <input

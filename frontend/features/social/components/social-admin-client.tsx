@@ -98,27 +98,31 @@ export function SocialAdminClient({ userEmail }: Props) {
   }
 
   async function approveParticipation(id: string) {
-    const token = await getToken();
+    setError(null);
+    try {
+      const token = await getToken();
+      if (!token) return;
 
-    if (!token) return;
-
-    await reviewParticipation(token, id, {
-      approved: true,
-    });
-
-    await loadActivities();
+      await reviewParticipation(token, id, { approved: true });
+      setNotice("Participation approved.");
+      await loadActivities();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to approve");
+    }
   }
 
   async function rejectParticipation(id: string) {
-    const token = await getToken();
+    setError(null);
+    try {
+      const token = await getToken();
+      if (!token) return;
 
-    if (!token) return;
-
-    await reviewParticipation(token, id, {
-      approved: false,
-    });
-
-    await loadActivities();
+      await reviewParticipation(token, id, { approved: false });
+      setNotice("Participation rejected.");
+      await loadActivities();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to reject");
+    }
   }
 
   return (
