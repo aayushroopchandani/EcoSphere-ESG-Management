@@ -122,10 +122,44 @@ export type GovernanceCitation = {
   excerpt: string;
 };
 
+export type GovernanceDataPanelCell = string | number | boolean | null;
+
+export type GovernanceDataPanelMetric = {
+  label: string;
+  value: string;
+  detail: string | null;
+  tone: string;
+};
+
+export type GovernanceDataPanelColumn = {
+  key: string;
+  label: string;
+  kind: "text" | "number" | "date" | "status" | "boolean" | string;
+};
+
+export type GovernanceDataPanelTable = {
+  id: string;
+  title: string;
+  description: string | null;
+  columns: GovernanceDataPanelColumn[];
+  rows: Array<Record<string, GovernanceDataPanelCell>>;
+};
+
+export type GovernanceDataPanel = {
+  title: string;
+  summary: string | null;
+  source: string;
+  source_tools: string[];
+  generated_at: string;
+  metrics: GovernanceDataPanelMetric[];
+  tables: GovernanceDataPanelTable[];
+};
+
 export type GovernanceChatResponse = {
   answer: string;
   citations: GovernanceCitation[];
   answer_found: boolean;
+  data_panel: GovernanceDataPanel | null;
 };
 
 export type GovernanceRiskSummaryResponse = {

@@ -10,7 +10,7 @@ from typing import Any
 
 from app.core.config import settings
 from app.models.governance import ComplianceSeverity, PolicyCategory
-from app.schemas.governance import GovernanceCitation
+from app.schemas.governance import GovernanceCitation, GovernanceDataPanel
 from app.utils.prompts import (
     get_governance_human_message,
     get_governance_risk_human_message,
@@ -82,6 +82,7 @@ class GovernanceRagResult:
     answer: str
     citations: list[GovernanceCitation]
     answer_found: bool
+    data_panel: GovernanceDataPanel | None = None
 
 
 def compute_document_hash(file_bytes: bytes) -> str:

@@ -9,3 +9,4 @@ openai
 qdrant-client
 PyMuPDF
 cloudinary
+langgraph

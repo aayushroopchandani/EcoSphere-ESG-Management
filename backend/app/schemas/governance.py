@@ -204,6 +204,40 @@ class GovernanceCitation(BaseModel):
     excerpt: str
 
 
+DataPanelCell = str | int | float | bool | None
+
+
+class GovernanceDataPanelMetric(BaseModel):
+    label: str
+    value: str
+    detail: str | None = None
+    tone: str = "slate"
+
+
+class GovernanceDataPanelColumn(BaseModel):
+    key: str
+    label: str
+    kind: str = "text"
+
+
+class GovernanceDataPanelTable(BaseModel):
+    id: str
+    title: str
+    description: str | None = None
+    columns: list[GovernanceDataPanelColumn]
+    rows: list[dict[str, DataPanelCell]]
+
+
+class GovernanceDataPanel(BaseModel):
+    title: str
+    summary: str | None = None
+    source: str = "mongodb"
+    source_tools: list[str] = Field(default_factory=list)
+    generated_at: datetime
+    metrics: list[GovernanceDataPanelMetric] = Field(default_factory=list)
+    tables: list[GovernanceDataPanelTable] = Field(default_factory=list)
+
+
 class GovernanceChatRequest(BaseModel):
     question: str = Field(min_length=2, max_length=4000)
     policy_ids: list[str] | None = None
@@ -214,6 +248,7 @@ class GovernanceChatResponse(BaseModel):
     answer: str
     citations: list[GovernanceCitation]
     answer_found: bool
+    data_panel: GovernanceDataPanel | None = None
 
 
 class GovernanceRiskSummaryRequest(BaseModel):

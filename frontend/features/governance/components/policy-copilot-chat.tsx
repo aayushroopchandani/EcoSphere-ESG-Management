@@ -4,10 +4,12 @@ import { FormEvent, useMemo, useState } from "react";
 import {
   Bot,
   CheckCircle2,
+  Database,
   Loader2,
   Send,
   ShieldQuestion,
   SlidersHorizontal,
+  Table2,
   UserRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -18,6 +20,7 @@ import { formatPolicyCategory } from "@/features/governance/lib/format";
 import type {
   GovernanceChatResponse,
   GovernanceCitation,
+  GovernanceDataPanel,
   GovernancePolicy,
   PolicyDocument,
 } from "@/features/governance/types/governance";
@@ -28,13 +31,15 @@ type ChatMessage = {
   role: "assistant" | "user";
   content: string;
   citations?: GovernanceCitation[];
+  dataPanel?: GovernanceDataPanel | null;
   answerFound?: boolean;
 };
 
 const quickPrompts = [
   "What are my responsibilities?",
+  "What are the environmental targets for each department?",
+  "Which compliance issues are overdue?",
   "What should I do after a supplier data breach?",
-  "Which ethics rules apply to data handling?",
 ];
 
 function createMessageId(role: ChatMessage["role"]) {
@@ -47,6 +52,7 @@ export function PolicyCopilotChat({
   documentsByPolicy = {},
   isCompact = false,
   onCitationOpen,
+  onDataPanelOpen,
   onAsk,
   policies,
   title = "Policy Copilot",
@@ -59,6 +65,7 @@ export function PolicyCopilotChat({
     citation: GovernanceCitation,
     document: PolicyDocument | null,
   ) => void;
+  onDataPanelOpen?: (panel: GovernanceDataPanel) => void;
   onAsk: (
     question: string,
     policyIds?: string[],
@@ -120,9 +127,14 @@ export function PolicyCopilotChat({
           role: "assistant",
           content: response.answer,
           citations: response.citations,
+          dataPanel: response.data_panel,
           answerFound: response.answer_found,
         },
       ]);
+
+      if (response.data_panel && onDataPanelOpen) {
+        onDataPanelOpen(response.data_panel);
+      }
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
@@ -182,7 +194,7 @@ export function PolicyCopilotChat({
             </div>
             <div className="flex items-center gap-2 rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-semibold text-cyan-800 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-200">
               <ShieldQuestion size={15} />
-              RAG
+              Agentic RAG
             </div>
           </div>
 
@@ -231,7 +243,7 @@ export function PolicyCopilotChat({
                   <Bot size={18} />
                 </span>
                 <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-                  Ask from uploaded governance PDFs and get cited answers.
+                  Ask from uploaded PDFs or live MongoDB records.
                 </p>
               </div>
             </div>
@@ -263,6 +275,21 @@ export function PolicyCopilotChat({
                   No matching indexed citation returned
                 </div>
               ) : null}
+              {message.role === "assistant" && message.dataPanel ? (
+                <button
+                  className="mt-3 inline-flex items-center gap-2 rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-semibold text-cyan-800 transition hover:border-cyan-400 hover:bg-cyan-100 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-200 dark:hover:border-cyan-300"
+                  onClick={() => {
+                    if (message.dataPanel) {
+                      onDataPanelOpen?.(message.dataPanel);
+                    }
+                  }}
+                  type="button"
+                >
+                  <Database size={14} />
+                  View MongoDB table
+                  <Table2 size={14} />
+                </button>
+              ) : null}
               {message.role === "assistant" ? (
                 <CitationList
                   activeCitationKey={activeCitationKey}
@@ -277,7 +304,7 @@ export function PolicyCopilotChat({
           {isAsking ? (
             <div className="flex items-center gap-3 rounded-lg border border-cyan-200 bg-cyan-50 p-4 text-sm font-medium text-cyan-800 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-200">
               <Loader2 className="animate-spin" size={17} />
-              Searching indexed policy chunks
+              Running agent tools
             </div>
           ) : null}
 

@@ -41,6 +41,7 @@ from app.schemas.governance import (
     PolicyUpdate,
 )
 from app.services.cloudinery_setup import upload_pdf
+from app.services.governance_agent import run_governance_agent
 from app.services.governance_rag import (
     answer_governance_question_from_context,
     answer_governance_question,
@@ -596,16 +597,27 @@ async def chat_with_governance_documents(
 ) -> GovernanceChatResponse:
     result = None
     try:
-        result = await asyncio.to_thread(
-            answer_governance_question,
+        result = await run_governance_agent(
+            database=database,
             question=payload.question,
             policy_ids=payload.policy_ids,
             document_ids=payload.document_ids,
         )
     except Exception:
-        # Local file-backed Qdrant can be locked by another process during demos.
-        # The Mongo policy fallback below keeps the copilot useful in that case.
         result = None
+
+    if result is None:
+        try:
+            result = await asyncio.to_thread(
+                answer_governance_question,
+                question=payload.question,
+                policy_ids=payload.policy_ids,
+                document_ids=payload.document_ids,
+            )
+        except Exception:
+            # Local file-backed Qdrant can be locked by another process during demos.
+            # The Mongo policy fallback below keeps the copilot useful in that case.
+            result = None
 
     if result is None or not result.answer_found:
         fallback_context, fallback_citations = await _build_policy_metadata_context(
@@ -633,6 +645,11 @@ async def chat_with_governance_documents(
         metadata={
             "policy_ids": payload.policy_ids or [],
             "document_ids": payload.document_ids or [],
+            "data_panel": (
+                result.data_panel.model_dump(mode="json")
+                if result.data_panel is not None
+                else None
+            ),
         },
     )
 
@@ -640,6 +657,7 @@ async def chat_with_governance_documents(
         answer=result.answer,
         citations=result.citations,
         answer_found=result.answer_found,
+        data_panel=result.data_panel,
     )
 
 

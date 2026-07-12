@@ -46,6 +46,7 @@ import {
   ComplianceIssueForm,
   type ComplianceIssueFormState,
 } from "./compliance-issue-form";
+import { GovernanceDataPanelView } from "./governance-data-panel";
 import { GovernanceMetricCard } from "./governance-metric-card";
 import { PolicyCopilotChat } from "./policy-copilot-chat";
 import {
@@ -57,6 +58,7 @@ import { RiskSummaryPanel } from "./risk-summary-panel";
 import type {
   ComplianceIssue,
   ComplianceIssueStatus,
+  GovernanceDataPanel,
   GovernanceAudit,
   GovernancePolicy,
   GovernanceRiskSummaryResponse,
@@ -132,6 +134,8 @@ export function AdminGovernanceClient({ userEmail }: { userEmail: string }) {
   );
   const [riskSummary, setRiskSummary] =
     useState<GovernanceRiskSummaryResponse | null>(null);
+  const [openDataPanel, setOpenDataPanel] =
+    useState<GovernanceDataPanel | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPolicySaving, setIsPolicySaving] = useState(false);
   const [isIssueSaving, setIsIssueSaving] = useState(false);
@@ -354,6 +358,7 @@ export function AdminGovernanceClient({ userEmail }: { userEmail: string }) {
         issue_id: issueId,
       });
       setRiskSummary(response);
+      setOpenDataPanel(null);
       setNotice("AI risk summary generated");
     } catch (caughtError) {
       setError(
@@ -549,15 +554,24 @@ export function AdminGovernanceClient({ userEmail }: { userEmail: string }) {
         <section className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
           <PolicyCopilotChat
             documentsByPolicy={documentsByPolicy}
+            onDataPanelOpen={setOpenDataPanel}
             onAsk={handleAskCopilot}
             policies={policies}
             title="Admin Policy Copilot"
           />
-          <RiskSummaryPanel
-            documentsByPolicy={documentsByPolicy}
-            isLoading={Boolean(generatingIssueId)}
-            summary={riskSummary}
-          />
+          {openDataPanel ? (
+            <GovernanceDataPanelView
+              className="xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto"
+              onClose={() => setOpenDataPanel(null)}
+              panel={openDataPanel}
+            />
+          ) : (
+            <RiskSummaryPanel
+              documentsByPolicy={documentsByPolicy}
+              isLoading={Boolean(generatingIssueId)}
+              summary={riskSummary}
+            />
+          )}
         </section>
 
         <section className="mt-6 grid gap-6 xl:grid-cols-3">

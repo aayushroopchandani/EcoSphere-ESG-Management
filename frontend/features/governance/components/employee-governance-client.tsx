@@ -23,12 +23,14 @@ import {
   getPolicyDocuments,
 } from "@/features/governance/lib/governance-api";
 import { formatDateTime } from "@/features/governance/lib/format";
+import { GovernanceDataPanelView } from "./governance-data-panel";
 import { GovernanceMetricCard } from "./governance-metric-card";
 import { PolicyCopilotChat } from "./policy-copilot-chat";
 import { PolicyPdfViewer } from "./policy-pdf-viewer";
 import { PolicyVault } from "./policy-vault";
 import type {
   GovernanceCitation,
+  GovernanceDataPanel,
   GovernancePolicy,
   PolicyAcknowledgement,
   PolicyDocument,
@@ -72,6 +74,8 @@ export function EmployeeGovernanceClient({
     citation: GovernanceCitation;
     document: PolicyDocument | null;
   } | null>(null);
+  const [openDataPanel, setOpenDataPanel] =
+    useState<GovernanceDataPanel | null>(null);
 
   const acknowledgementMap = useMemo(
     () =>
@@ -328,16 +332,27 @@ export function EmployeeGovernanceClient({
           <PolicyCopilotChat
             activeCitationKey={activeCitationKey}
             documentsByPolicy={documentsByPolicy}
-            onCitationOpen={(citation, document) =>
-              setOpenSource({ citation, document })
-            }
+            onCitationOpen={(citation, document) => {
+              setOpenDataPanel(null);
+              setOpenSource({ citation, document });
+            }}
+            onDataPanelOpen={(panel) => {
+              setOpenSource(null);
+              setOpenDataPanel(panel);
+            }}
             onAsk={handleAskCopilot}
             policies={policies}
             title="Employee Policy Copilot"
           />
 
           <div className="xl:sticky xl:top-24">
-            {openSource ? (
+            {openDataPanel ? (
+              <GovernanceDataPanelView
+                className="xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto"
+                onClose={() => setOpenDataPanel(null)}
+                panel={openDataPanel}
+              />
+            ) : openSource ? (
               <PolicyPdfViewer
                 citation={openSource.citation}
                 document={openSource.document}
@@ -352,9 +367,10 @@ export function EmployeeGovernanceClient({
                 documentsByPolicy={documentsByPolicy}
                 isAcknowledgingPolicyId={acknowledgingPolicyId}
                 onAcknowledge={(policyId) => void handleAcknowledge(policyId)}
-                onDocumentOpen={(citation, document) =>
-                  setOpenSource({ citation, document })
-                }
+                onDocumentOpen={(citation, document) => {
+                  setOpenDataPanel(null);
+                  setOpenSource({ citation, document });
+                }}
                 policies={policies}
                 title="My Policies"
               />
