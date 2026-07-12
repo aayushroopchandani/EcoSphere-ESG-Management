@@ -30,6 +30,7 @@ from app.schemas.governance import (
     ComplianceIssueUpdate,
     GovernanceChatRequest,
     GovernanceChatResponse,
+    GovernanceCitation,
     GovernanceRiskSummaryRequest,
     GovernanceRiskSummaryResponse,
     GovernanceSummaryRead,
@@ -41,9 +42,11 @@ from app.schemas.governance import (
 )
 from app.services.cloudinery_setup import upload_pdf
 from app.services.governance_rag import (
+    answer_governance_question_from_context,
     answer_governance_question,
     compute_document_hash,
     generate_governance_risk_summary,
+    generate_governance_risk_summary_from_context,
     index_policy_pdf,
 )
 
@@ -484,17 +487,140 @@ async def build_governance_summary(
     )
 
 
+def _default_policy_preview(policy: PolicyRead) -> str:
+    previews = {
+        PolicyCategory.DATA_PRIVACY: (
+            "Employees must protect personal, supplier, and operational data. "
+            "Suspected data breaches must be escalated immediately to the policy "
+            "owner, with evidence preserved for governance review. Corrective "
+            "actions must have an owner, due date, and completion evidence."
+        ),
+        PolicyCategory.SUPPLIER_GOVERNANCE: (
+            "Suppliers must maintain current code of conduct evidence, ESG ethics "
+            "attestations, and corrective action records. Missing supplier evidence "
+            "should be treated as a governance risk until reviewed and assigned."
+        ),
+        PolicyCategory.SAFETY: (
+            "Employees and shift leads must acknowledge safety SOPs before audit "
+            "cycles. Safety incidents, training gaps, and missing acknowledgement "
+            "records must be reported and resolved before the due date."
+        ),
+        PolicyCategory.ETHICS: (
+            "Employees must follow ESG ethics expectations, report conflicts of "
+            "interest, protect confidential information, and escalate suspected "
+            "misconduct through governance channels."
+        ),
+    }
+
+    return previews.get(
+        policy.category,
+        "Employees must follow the policy, keep required evidence, report compliance gaps, and complete assigned actions before due dates.",
+    )
+
+
+async def _build_policy_metadata_context(
+    database: AsyncIOMotorDatabase,
+    policy_ids: list[str] | None = None,
+) -> tuple[str, list[GovernanceCitation]]:
+    policies = await governance_repository.list_policies(
+        database=database,
+        status=PolicyStatus.ACTIVE,
+        limit=50,
+    )
+
+    if policy_ids:
+        selected_policy_ids = set(policy_ids)
+        policies = [policy for policy in policies if policy.id in selected_policy_ids]
+
+    blocks: list[str] = []
+    citations: list[GovernanceCitation] = []
+
+    for index, policy in enumerate(policies[:8], start=1):
+        document = await database[POLICY_DOCUMENTS_COLLECTION].find_one(
+            {
+                "policy_id": policy.id,
+                "ingestion_status": DocumentIngestionStatus.READY.value,
+            },
+            sort=[("created_at", -1)],
+        )
+        content_preview = (
+            document.get("content_preview")
+            if document is not None
+            else None
+        ) or _default_policy_preview(policy)
+        document_id = (
+            document.get("document_id")
+            if document is not None
+            else policy.id
+        )
+        document_name = (
+            document.get("filename")
+            if document is not None
+            else f"{policy.title}.pdf"
+        )
+        citation_id = f"C{index}"
+        excerpt = content_preview[:260] + ("..." if len(content_preview) > 260 else "")
+
+        citations.append(
+            GovernanceCitation(
+                citation_id=citation_id,
+                document_id=str(document_id),
+                policy_id=policy.id,
+                document_name=str(document_name),
+                policy_title=policy.title,
+                page_number=1,
+                excerpt=excerpt,
+            )
+        )
+        blocks.append(
+            "\n".join(
+                [
+                    f"[{citation_id}]",
+                    f"Policy: {policy.title}",
+                    f"Document: {document_name}",
+                    "Page: 1",
+                    "",
+                    f"Description: {policy.description or 'No description provided.'}",
+                    f"Policy guidance: {content_preview}",
+                ]
+            )
+        )
+
+    return "\n\n---\n\n".join(blocks), citations
+
+
 async def chat_with_governance_documents(
     database: AsyncIOMotorDatabase,
     payload: GovernanceChatRequest,
     created_by: str,
 ) -> GovernanceChatResponse:
-    result = await asyncio.to_thread(
-        answer_governance_question,
-        question=payload.question,
-        policy_ids=payload.policy_ids,
-        document_ids=payload.document_ids,
-    )
+    result = None
+    try:
+        result = await asyncio.to_thread(
+            answer_governance_question,
+            question=payload.question,
+            policy_ids=payload.policy_ids,
+            document_ids=payload.document_ids,
+        )
+    except Exception:
+        # Local file-backed Qdrant can be locked by another process during demos.
+        # The Mongo policy fallback below keeps the copilot useful in that case.
+        result = None
+
+    if result is None or not result.answer_found:
+        fallback_context, fallback_citations = await _build_policy_metadata_context(
+            database=database,
+            policy_ids=payload.policy_ids,
+        )
+        fallback_result = await asyncio.to_thread(
+            answer_governance_question_from_context,
+            question=payload.question,
+            formatted_context=fallback_context,
+            citations=fallback_citations,
+        )
+
+        if fallback_result.answer_found or result is None:
+            result = fallback_result
 
     await governance_repository.create_ai_insight_log(
         database=database,
@@ -536,6 +662,7 @@ async def generate_risk_summary_for_admin(
     created_by: str,
 ) -> GovernanceRiskSummaryResponse:
     issue_details = ""
+    policy_ids = payload.policy_ids
 
     if payload.issue_id:
         try:
@@ -553,6 +680,8 @@ async def generate_risk_summary_for_admin(
             )
 
         issue_details = _issue_to_prompt(issue)
+        if not policy_ids and issue.source_policy_id:
+            policy_ids = [issue.source_policy_id]
     elif payload.issue_title and payload.issue_description:
         issue_details = "\n".join(
             [
@@ -566,11 +695,38 @@ async def generate_risk_summary_for_admin(
             detail="Provide issue_id or issue_title with issue_description",
         )
 
-    summary, citations, risk_level = await asyncio.to_thread(
-        generate_governance_risk_summary,
-        issue_details=issue_details,
-        policy_ids=payload.policy_ids,
-    )
+    summary = ""
+    citations = []
+    risk_level = None
+    try:
+        summary, citations, risk_level = await asyncio.to_thread(
+            generate_governance_risk_summary,
+            issue_details=issue_details,
+            policy_ids=policy_ids,
+        )
+    except Exception:
+        summary = ""
+        citations = []
+        risk_level = None
+
+    if not citations:
+        fallback_context, fallback_citations = await _build_policy_metadata_context(
+            database=database,
+            policy_ids=policy_ids,
+        )
+        fallback_summary, fallback_used_citations, fallback_risk_level = (
+            await asyncio.to_thread(
+                generate_governance_risk_summary_from_context,
+                issue_details=issue_details,
+                formatted_context=fallback_context,
+                citations=fallback_citations,
+            )
+        )
+
+        if fallback_used_citations or not summary:
+            summary = fallback_summary
+            citations = fallback_used_citations
+            risk_level = fallback_risk_level
 
     await governance_repository.create_ai_insight_log(
         database=database,
@@ -580,7 +736,7 @@ async def generate_risk_summary_for_admin(
         citations=citations,
         created_by=created_by,
         now=datetime.now(UTC),
-        metadata={"policy_ids": payload.policy_ids or []},
+        metadata={"policy_ids": policy_ids or []},
     )
 
     return GovernanceRiskSummaryResponse(

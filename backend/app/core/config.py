@@ -34,7 +34,7 @@ class Settings(BaseSettings):
 
     openrouter_api_key: str | None = None
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
-    governance_llm_model: str = "google/gemini-2.5-flash"
+    governance_llm_model: str = "google/gemini-2.5-flash-lite"
 
     qdrant_url: str | None = None
     qdrant_api_key: str | None = None
@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     governance_rag_chunk_size: int = 1200
     governance_rag_chunk_overlap: int = 180
     governance_rag_top_k: int = 8
+
+    cloudinary_cloud_name: str | None = None
+    cloudinary_api_key: str | None = None
+    cloudinary_api_secret: str | None = None
 
     @field_validator("cors_origins", "clerk_authorized_parties", mode="before")
     @classmethod

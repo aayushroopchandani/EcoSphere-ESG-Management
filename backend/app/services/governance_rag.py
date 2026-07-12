@@ -20,6 +20,36 @@ from app.utils.prompts import (
 
 GOVERNANCE_VECTOR_SIZE = 1536
 NOT_FOUND_PHRASE = "I could not find this information in the uploaded governance documents."
+STOP_WORDS = {
+    "about",
+    "after",
+    "also",
+    "and",
+    "are",
+    "can",
+    "could",
+    "does",
+    "for",
+    "from",
+    "has",
+    "how",
+    "into",
+    "our",
+    "should",
+    "that",
+    "the",
+    "their",
+    "this",
+    "under",
+    "what",
+    "when",
+    "where",
+    "which",
+    "who",
+    "with",
+    "would",
+    "you",
+}
 
 
 @dataclass(frozen=True)
@@ -68,33 +98,50 @@ def _require_dependency(module_name: str, package_name: str | None = None):
         ) from exc
 
 
-@lru_cache(maxsize=1)
-def _get_openai_client():
-    openai_module = _require_dependency("openai")
-    api_key = settings.openai_api_key or settings.openrouter_api_key
+def _clean_secret(value: str | None) -> str | None:
+    if value is None:
+        return None
 
-    if not api_key:
+    stripped = value.strip().strip('"').strip("'")
+    return stripped or None
+
+
+@lru_cache(maxsize=1)
+def _get_chat_client():
+    openai_module = _require_dependency("openai")
+    openrouter_key = _clean_secret(settings.openrouter_api_key)
+    openai_key = _clean_secret(settings.openai_api_key)
+
+    if openrouter_key:
+        return openai_module.OpenAI(
+            api_key=openrouter_key,
+            base_url=settings.openrouter_base_url,
+            default_headers={
+                "HTTP-Referer": "http://localhost:3000",
+                "X-Title": settings.app_name,
+            },
+        )
+
+    if not openai_key:
         raise RuntimeError("OPENAI_API_KEY or OPENROUTER_API_KEY is required")
 
-    base_url = (
-        settings.openrouter_base_url
-        if settings.openrouter_api_key
-        else settings.openai_base_url
+    return openai_module.OpenAI(
+        api_key=openai_key,
+        base_url=_clean_secret(settings.openai_base_url),
     )
-
-    return openai_module.OpenAI(api_key=api_key, base_url=base_url)
 
 
 @lru_cache(maxsize=1)
 def _get_embedding_client():
     openai_module = _require_dependency("openai")
+    openai_key = _clean_secret(settings.openai_api_key)
 
-    if not settings.openai_api_key:
+    if not openai_key:
         raise RuntimeError("OPENAI_API_KEY is required for document embeddings")
 
     return openai_module.OpenAI(
-        api_key=settings.openai_api_key,
-        base_url=settings.openai_base_url,
+        api_key=openai_key,
+        base_url=_clean_secret(settings.openai_base_url),
     )
 
 
@@ -420,14 +467,14 @@ def format_chunks_for_prompt(
 
 
 def _chat_model_name() -> str:
-    if settings.openrouter_api_key:
+    if _clean_secret(settings.openrouter_api_key):
         return settings.governance_llm_model
 
     return settings.openai_chat_model
 
 
 def _generate_chat_completion(system_prompt: str, human_prompt: str) -> str:
-    client = _get_openai_client()
+    client = _get_chat_client()
     response = client.chat.completions.create(
         model=_chat_model_name(),
         messages=[
@@ -456,6 +503,115 @@ def _filter_used_citations(
         return citations[:3]
 
     return [citation for citation in citations if citation.citation_id in used_ids]
+
+
+def _keywords(text: str) -> set[str]:
+    return {
+        token
+        for token in re.findall(r"[a-z][a-z0-9_-]{2,}", text.lower())
+        if token not in STOP_WORDS
+    }
+
+
+def _context_blocks(formatted_context: str) -> list[str]:
+    return [
+        block.strip()
+        for block in re.split(r"\n\s*---\s*\n", formatted_context)
+        if block.strip()
+    ]
+
+
+def _block_citation_id(block: str) -> str | None:
+    match = re.search(r"\[(C\d+)\]", block)
+    return match.group(1) if match else None
+
+
+def _guidance_from_block(block: str) -> str:
+    match = re.search(r"Policy guidance:\s*(.+)", block, flags=re.DOTALL)
+    if match:
+        return re.sub(r"\s+", " ", match.group(1)).strip()
+
+    lines = [
+        line.strip()
+        for line in block.splitlines()
+        if line.strip()
+        and not line.startswith("[C")
+        and not line.startswith("Policy:")
+        and not line.startswith("Document:")
+        and not line.startswith("Document ID:")
+        and not line.startswith("Page:")
+    ]
+    return re.sub(r"\s+", " ", " ".join(lines)).strip()
+
+
+def _relevant_sentences(text: str, terms: set[str], limit: int = 2) -> str:
+    sentences = [
+        sentence.strip()
+        for sentence in re.split(r"(?<=[.!?])\s+", text)
+        if sentence.strip()
+    ]
+    selected = [
+        sentence
+        for sentence in sentences
+        if any(term in sentence.lower() for term in terms)
+    ]
+    if not selected:
+        selected = sentences
+
+    return " ".join(selected[:limit]).strip()
+
+
+def _extractive_context_answer(
+    *,
+    question: str,
+    formatted_context: str,
+    citations: list[GovernanceCitation],
+) -> GovernanceRagResult:
+    terms = _keywords(question)
+    citation_map = {citation.citation_id: citation for citation in citations}
+    scored_blocks: list[tuple[int, int, str, GovernanceCitation]] = []
+
+    for index, block in enumerate(_context_blocks(formatted_context)):
+        citation_id = _block_citation_id(block)
+        citation = citation_map.get(citation_id or "")
+        if citation is None:
+            continue
+
+        guidance = _guidance_from_block(block)
+        normalized_guidance = guidance.lower()
+        score = sum(1 for term in terms if term in normalized_guidance)
+        if score > 0:
+            scored_blocks.append((score, index, block, citation))
+
+    if not scored_blocks:
+        return GovernanceRagResult(
+            answer=NOT_FOUND_PHRASE,
+            citations=[],
+            answer_found=False,
+        )
+
+    ranked_blocks = sorted(scored_blocks, key=lambda item: (-item[0], item[1]))[:3]
+    used_citations = [item[3] for item in ranked_blocks]
+    bullets = []
+
+    for _, _, block, citation in ranked_blocks:
+        guidance = _guidance_from_block(block)
+        excerpt = _relevant_sentences(guidance, terms)
+        if excerpt:
+            bullets.append(f"- {excerpt} [{citation.citation_id}]")
+
+    if not bullets:
+        return GovernanceRagResult(
+            answer=NOT_FOUND_PHRASE,
+            citations=[],
+            answer_found=False,
+        )
+
+    return GovernanceRagResult(
+        answer="I found related governance guidance:\n" + "\n".join(bullets),
+        citations=used_citations,
+        answer_found=True,
+    )
 
 
 def answer_governance_question(
@@ -492,9 +648,51 @@ def answer_governance_question(
     )
 
 
+def answer_governance_question_from_context(
+    *,
+    question: str,
+    formatted_context: str,
+    citations: list[GovernanceCitation],
+) -> GovernanceRagResult:
+    if not formatted_context.strip() or not citations:
+        return GovernanceRagResult(
+            answer=NOT_FOUND_PHRASE,
+            citations=[],
+            answer_found=False,
+        )
+
+    try:
+        answer = _generate_chat_completion(
+            system_prompt=get_governance_system_message(),
+            human_prompt=get_governance_human_message(question, formatted_context),
+        )
+    except Exception:
+        return _extractive_context_answer(
+            question=question,
+            formatted_context=formatted_context,
+            citations=citations,
+        )
+
+    used_citations = _filter_used_citations(answer, citations)
+
+    if NOT_FOUND_PHRASE.lower() in answer.lower():
+        return _extractive_context_answer(
+            question=question,
+            formatted_context=formatted_context,
+            citations=citations,
+        )
+
+    return GovernanceRagResult(
+        answer=answer,
+        citations=used_citations,
+        answer_found=bool(used_citations)
+        and NOT_FOUND_PHRASE.lower() not in answer.lower(),
+    )
+
+
 def _extract_risk_level(answer: str) -> ComplianceSeverity | None:
     match = re.search(
-        r"risk level\s*:\s*(low|medium|high|critical)",
+        r"risk\s*level[^a-z0-9]*(low|medium|high|critical)",
         answer,
         flags=re.IGNORECASE,
     )
@@ -519,6 +717,33 @@ def generate_governance_risk_summary(
     answer = _generate_chat_completion(
         system_prompt=get_governance_risk_system_message(),
         human_prompt=get_governance_risk_human_message(issue_details, context),
+    )
+    used_citations = _filter_used_citations(answer, citations)
+
+    return answer, used_citations, _extract_risk_level(answer)
+
+
+def generate_governance_risk_summary_from_context(
+    *,
+    issue_details: str,
+    formatted_context: str,
+    citations: list[GovernanceCitation],
+) -> tuple[str, list[GovernanceCitation], ComplianceSeverity | None]:
+    if not formatted_context.strip() or not citations:
+        return (
+            "Risk level: Medium\n\n"
+            "The uploaded governance context was not available, so this issue "
+            "should be reviewed by the governance owner before action is closed.",
+            [],
+            ComplianceSeverity.MEDIUM,
+        )
+
+    answer = _generate_chat_completion(
+        system_prompt=get_governance_risk_system_message(),
+        human_prompt=get_governance_risk_human_message(
+            issue_details,
+            formatted_context,
+        ),
     )
     used_citations = _filter_used_citations(answer, citations)
 

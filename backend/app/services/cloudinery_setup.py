@@ -1,15 +1,31 @@
 from __future__ import annotations
 
-import os
 from typing import Any
+
+from app.core.config import settings
+
+
+def _clean_secret(value: str | None) -> str | None:
+    if value is None:
+        return None
+
+    cleaned = value.strip().strip('"').strip("'")
+    return cleaned or None
+
+
+def _cloudinary_credentials() -> tuple[str, str, str] | None:
+    cloud_name = _clean_secret(settings.cloudinary_cloud_name)
+    api_key = _clean_secret(settings.cloudinary_api_key)
+    api_secret = _clean_secret(settings.cloudinary_api_secret)
+
+    if not cloud_name or not api_key or not api_secret:
+        return None
+
+    return cloud_name, api_key, api_secret
 
 
 def _cloudinary_configured() -> bool:
-    return bool(
-        os.getenv("CLOUDINARY_CLOUD_NAME")
-        and os.getenv("CLOUDINARY_API_KEY")
-        and os.getenv("CLOUDINARY_API_SECRET")
-    )
+    return _cloudinary_credentials() is not None
 
 
 def upload_pdf(
@@ -35,10 +51,15 @@ def upload_pdf(
             "cloudinary is not installed. Install backend requirements first."
         ) from exc
 
+    credentials = _cloudinary_credentials()
+    if credentials is None:
+        return None
+
+    cloud_name, api_key, api_secret = credentials
     cloudinary.config(
-        cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
-        api_key=os.getenv("CLOUDINARY_API_KEY"),
-        api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+        cloud_name=cloud_name,
+        api_key=api_key,
+        api_secret=api_secret,
         secure=True,
     )
 
@@ -79,10 +100,15 @@ def delete_pdf(
             "cloudinary is not installed. Install backend requirements first."
         ) from exc
 
+    credentials = _cloudinary_credentials()
+    if credentials is None:
+        return
+
+    cloud_name, api_key, api_secret = credentials
     cloudinary.config(
-        cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
-        api_key=os.getenv("CLOUDINARY_API_KEY"),
-        api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+        cloud_name=cloud_name,
+        api_key=api_key,
+        api_secret=api_secret,
         secure=True,
     )
     cloudinary.uploader.destroy(public_id, resource_type=resource_type)

@@ -41,9 +41,7 @@ import {
 } from "@/features/governance/lib/format";
 import { AuditForm, type AuditFormState } from "./audit-form";
 import { AuditTimeline } from "./audit-timeline";
-import {
-  ComplianceIssueBoard,
-} from "./compliance-issue-board";
+import { ComplianceIssueBoard } from "./compliance-issue-board";
 import {
   ComplianceIssueForm,
   type ComplianceIssueFormState,
@@ -189,7 +187,10 @@ export function AdminGovernanceClient({ userEmail }: { userEmail: string }) {
       const documentEntries = await Promise.all(
         loadedPolicies.map(async (policy) => {
           try {
-            return [policy.id, await getPolicyDocuments(token, policy.id)] as const;
+            return [
+              policy.id,
+              await getPolicyDocuments(token, policy.id),
+            ] as const;
           } catch {
             return [policy.id, []] as const;
           }
@@ -377,7 +378,9 @@ export function AdminGovernanceClient({ userEmail }: { userEmail: string }) {
       const token = await getSessionToken();
       await updateComplianceIssue(token, issueId, {
         resolution_note:
-          status === "resolved" ? "Marked resolved from governance desk." : null,
+          status === "resolved"
+            ? "Marked resolved from governance desk."
+            : null,
         status,
       });
       setNotice("Compliance issue updated");
@@ -461,7 +464,10 @@ export function AdminGovernanceClient({ userEmail }: { userEmail: string }) {
               type="button"
               variant="secondary"
             >
-              <RefreshCw className={isLoading ? "animate-spin" : ""} size={17} />
+              <RefreshCw
+                className={isLoading ? "animate-spin" : ""}
+                size={17}
+              />
             </Button>
             <ThemeToggle />
             <UserButton />
@@ -542,11 +548,13 @@ export function AdminGovernanceClient({ userEmail }: { userEmail: string }) {
 
         <section className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
           <PolicyCopilotChat
+            documentsByPolicy={documentsByPolicy}
             onAsk={handleAskCopilot}
             policies={policies}
             title="Admin Policy Copilot"
           />
           <RiskSummaryPanel
+            documentsByPolicy={documentsByPolicy}
             isLoading={Boolean(generatingIssueId)}
             summary={riskSummary}
           />

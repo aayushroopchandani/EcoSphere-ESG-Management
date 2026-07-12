@@ -25,8 +25,10 @@ import {
 import { formatDateTime } from "@/features/governance/lib/format";
 import { GovernanceMetricCard } from "./governance-metric-card";
 import { PolicyCopilotChat } from "./policy-copilot-chat";
+import { PolicyPdfViewer } from "./policy-pdf-viewer";
 import { PolicyVault } from "./policy-vault";
 import type {
+  GovernanceCitation,
   GovernancePolicy,
   PolicyAcknowledgement,
   PolicyDocument,
@@ -66,6 +68,10 @@ export function EmployeeGovernanceClient({
   >(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [openSource, setOpenSource] = useState<{
+    citation: GovernanceCitation;
+    document: PolicyDocument | null;
+  } | null>(null);
 
   const acknowledgementMap = useMemo(
     () =>
@@ -112,7 +118,10 @@ export function EmployeeGovernanceClient({
       const documentEntries = await Promise.all(
         loadedPolicies.map(async (policy) => {
           try {
-            return [policy.id, await getPolicyDocuments(token, policy.id)] as const;
+            return [
+              policy.id,
+              await getPolicyDocuments(token, policy.id),
+            ] as const;
           } catch {
             return [policy.id, []] as const;
           }
@@ -176,6 +185,9 @@ export function EmployeeGovernanceClient({
     policies.length - acknowledgementMap.size,
   );
   const latestAcknowledgement = acknowledgements.at(0);
+  const activeCitationKey = openSource
+    ? `${openSource.citation.citation_id}-${openSource.citation.document_id}`
+    : null;
 
   return (
     <main className="governance-circuit-bg min-h-screen bg-[var(--background)] text-[var(--foreground)]">
@@ -206,7 +218,10 @@ export function EmployeeGovernanceClient({
               type="button"
               variant="secondary"
             >
-              <RefreshCw className={isLoading ? "animate-spin" : ""} size={17} />
+              <RefreshCw
+                className={isLoading ? "animate-spin" : ""}
+                size={17}
+              />
             </Button>
             <ThemeToggle />
             <UserButton />
@@ -222,7 +237,8 @@ export function EmployeeGovernanceClient({
               Policy Responsibilities
             </div>
             <h2 className="max-w-3xl text-3xl font-semibold leading-tight text-slate-950 dark:text-white sm:text-4xl">
-              Hi {firstName}, ask the policy copilot and acknowledge what applies.
+              Hi {firstName}, ask the policy copilot and acknowledge what
+              applies.
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
               Signed in as {userEmail}
@@ -236,7 +252,9 @@ export function EmployeeGovernanceClient({
                   Responsibility Signal
                 </p>
                 <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">
-                  {policies.length ? `${acknowledgements.length}/${policies.length}` : "0/0"}
+                  {policies.length
+                    ? `${acknowledgements.length}/${policies.length}`
+                    : "0/0"}
                 </p>
               </div>
               <span className="grid size-12 place-items-center rounded-lg bg-slate-950 text-white dark:bg-white dark:text-slate-950">
@@ -306,54 +324,74 @@ export function EmployeeGovernanceClient({
           </section>
         )}
 
-        <section className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+        <section className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,0.86fr)_minmax(25rem,1.14fr)] xl:items-start">
           <PolicyCopilotChat
+            activeCitationKey={activeCitationKey}
+            documentsByPolicy={documentsByPolicy}
+            onCitationOpen={(citation, document) =>
+              setOpenSource({ citation, document })
+            }
             onAsk={handleAskCopilot}
             policies={policies}
             title="Employee Policy Copilot"
           />
-          <PolicyVault
-            acknowledgements={acknowledgements}
-            documentsByPolicy={documentsByPolicy}
-            isAcknowledgingPolicyId={acknowledgingPolicyId}
-            onAcknowledge={(policyId) => void handleAcknowledge(policyId)}
-            policies={policies}
-            title="My Policies"
-          />
-        </section>
 
-        <section className="mt-6 grid gap-6 lg:grid-cols-[0.75fr_1.25fr]">
-          <div className="governance-panel rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-slate-950/85">
-            <div className="flex items-center gap-3">
-              <span className="grid size-10 place-items-center rounded-lg bg-cyan-100 text-cyan-700 dark:bg-cyan-400/10 dark:text-cyan-200">
-                <Bot size={19} />
-              </span>
-              <div>
-                <h2 className="text-lg font-semibold text-slate-950 dark:text-white">
-                  Latest Acknowledgement
-                </h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  {latestAcknowledgement
-                    ? formatDateTime(latestAcknowledgement.acknowledged_at)
-                    : "No acknowledgement yet"}
-                </p>
+          <div className="xl:sticky xl:top-24">
+            {openSource ? (
+              <PolicyPdfViewer
+                citation={openSource.citation}
+                document={openSource.document}
+                key={`${openSource.citation.citation_id}-${openSource.citation.document_id}`}
+                mode="inline"
+                onClose={() => setOpenSource(null)}
+              />
+            ) : (
+              <PolicyVault
+                acknowledgements={acknowledgements}
+                className="xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto"
+                documentsByPolicy={documentsByPolicy}
+                isAcknowledgingPolicyId={acknowledgingPolicyId}
+                onAcknowledge={(policyId) => void handleAcknowledge(policyId)}
+                onDocumentOpen={(citation, document) =>
+                  setOpenSource({ citation, document })
+                }
+                policies={policies}
+                title="My Policies"
+              />
+            )}
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+              <div className="governance-panel rounded-lg border border-slate-200/70 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/85">
+                <div className="flex items-center gap-3">
+                  <span className="grid size-9 place-items-center rounded-lg bg-cyan-100 text-cyan-700 dark:bg-cyan-400/10 dark:text-cyan-200">
+                    <Bot size={17} />
+                  </span>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                      Latest
+                    </p>
+                    <p className="text-sm text-slate-700 dark:text-slate-200">
+                      {latestAcknowledgement
+                        ? formatDateTime(latestAcknowledgement.acknowledged_at)
+                        : "No acknowledgement yet"}
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-          <div className="governance-panel rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-slate-950/85">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-950 dark:text-white">
-                  Indexed Documents
-                </h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  {readyDocuments} ready documents across active policies
-                </p>
+              <div className="governance-panel rounded-lg border border-slate-200/70 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/85">
+                <div className="flex items-center gap-3">
+                  <span className="grid size-9 place-items-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-200">
+                    <FileCheck2 size={17} />
+                  </span>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                      Indexed
+                    </p>
+                    <p className="text-sm text-slate-700 dark:text-slate-200">
+                      {readyDocuments} ready documents
+                    </p>
+                  </div>
+                </div>
               </div>
-              <span className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200">
-                <FileCheck2 size={14} />
-                RAG Ready
-              </span>
             </div>
           </div>
         </section>

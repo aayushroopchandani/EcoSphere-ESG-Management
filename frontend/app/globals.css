@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "react-pdf/dist/Page/TextLayer.css";
+@import "react-pdf/dist/Page/AnnotationLayer.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -81,10 +83,21 @@ body {
 
 .governance-panel {
   isolation: isolate;
+  border-color: rgba(148, 163, 184, 0.26) !important;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.72) inset,
+    0 16px 42px rgba(15, 23, 42, 0.055);
 }
 
 .governance-panel::selection {
   background: rgba(6, 182, 212, 0.24);
+}
+
+.dark .governance-panel {
+  border-color: rgba(255, 255, 255, 0.09) !important;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 18px 44px rgba(0, 0, 0, 0.22);
 }
 
 .governance-live-panel {
@@ -116,6 +129,25 @@ body {
 .governance-bar {
   animation: governance-bar-pulse 1.8s ease-in-out infinite;
   transform-origin: center;
+}
+
+.animate-pdf-pop {
+  animation: pdf-pop 0.36s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.governance-pdf-highlight {
+  background: rgba(250, 204, 21, 0.42);
+  border-radius: 3px;
+  box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.22);
+  color: inherit;
+}
+
+.react-pdf__Page {
+  background: white;
+}
+
+.react-pdf__Page__textContent mark {
+  color: transparent;
 }
 
 @keyframes governance-grid-drift {
@@ -169,9 +201,24 @@ body {
   }
 }
 
+@keyframes pdf-pop {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.94);
+  }
+  70% {
+    transform: translateY(-4px) scale(1.01);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .governance-circuit-bg,
   .animate-governance-rise,
+  .animate-pdf-pop,
   .governance-bar,
   .governance-scanline {
     animation: none;
