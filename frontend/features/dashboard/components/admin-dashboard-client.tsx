@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { UserButton, useAuth } from "@clerk/nextjs";
 import {
@@ -219,6 +220,14 @@ export function AdminDashboardClient({ userEmail }: { userEmail: string }) {
             </h1>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              aria-label="Open environmental carbon tracking"
+              className="inline-flex size-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-0 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-emerald-300 hover:text-emerald-700 dark:border-white/10 dark:bg-slate-950 dark:text-slate-100 dark:hover:border-emerald-400 dark:hover:text-emerald-300 sm:w-auto sm:px-3"
+              href="/admin/environment"
+            >
+              <Leaf size={16} />
+              <span className="hidden sm:inline">Environment</span>
+            </Link>
             <Button
               aria-label="Refresh dashboard"
               className="size-10 px-0"

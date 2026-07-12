@@ -28,6 +28,14 @@ GET  /api/dashboard/summary
 GET  /api/dashboard/department-scores
 POST /api/dashboard/department-scores
 
+GET  /api/environment/emission-factors
+POST /api/environment/emission-factors
+GET  /api/environment/carbon-transactions
+POST /api/environment/carbon-transactions
+GET  /api/environment/goals
+POST /api/environment/goals
+GET  /api/environment/summary
+
 GET /api/activity-logs/recent
 ```
 

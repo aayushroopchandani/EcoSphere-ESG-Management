@@ -7,6 +7,11 @@ from app.models.dashboard import (
     DEPARTMENT_SCORES_COLLECTION,
     DEPARTMENTS_COLLECTION,
 )
+from app.models.environment import (
+    CARBON_TRANSACTIONS_COLLECTION,
+    EMISSION_FACTORS_COLLECTION,
+    ENVIRONMENTAL_GOALS_COLLECTION,
+)
 from app.models.user import USERS_COLLECTION
 
 _client: AsyncIOMotorClient | None = None
@@ -43,6 +48,9 @@ async def ensure_indexes() -> None:
     departments = database[DEPARTMENTS_COLLECTION]
     department_scores = database[DEPARTMENT_SCORES_COLLECTION]
     activity_logs = database[ACTIVITY_LOGS_COLLECTION]
+    emission_factors = database[EMISSION_FACTORS_COLLECTION]
+    carbon_transactions = database[CARBON_TRANSACTIONS_COLLECTION]
+    environmental_goals = database[ENVIRONMENTAL_GOALS_COLLECTION]
 
     await users.create_index("clerk_user_id", unique=True)
     await users.create_index("email")
@@ -70,3 +78,24 @@ async def ensure_indexes() -> None:
     await activity_logs.create_index("created_at")
     await activity_logs.create_index([("created_at", DESCENDING)])
     await activity_logs.create_index("type")
+
+    await emission_factors.create_index("name")
+    await emission_factors.create_index("category")
+    await emission_factors.create_index("status")
+
+    await carbon_transactions.create_index("department_id")
+    await carbon_transactions.create_index("emission_factor_id")
+    await carbon_transactions.create_index("transaction_date")
+    await carbon_transactions.create_index("source_type")
+    await carbon_transactions.create_index(
+        [("department_id", ASCENDING), ("transaction_date", DESCENDING)]
+    )
+    await carbon_transactions.create_index(
+        [("source_type", ASCENDING), ("transaction_date", DESCENDING)]
+    )
+
+    await environmental_goals.create_index("department_id")
+    await environmental_goals.create_index(
+        [("period_year", ASCENDING), ("period_month", ASCENDING)]
+    )
+    await environmental_goals.create_index("status")
