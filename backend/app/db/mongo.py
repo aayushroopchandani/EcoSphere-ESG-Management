@@ -1,6 +1,12 @@
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from pymongo import ASCENDING, DESCENDING
 
 from app.core.config import settings
+from app.models.dashboard import (
+    ACTIVITY_LOGS_COLLECTION,
+    DEPARTMENT_SCORES_COLLECTION,
+    DEPARTMENTS_COLLECTION,
+)
 from app.models.user import USERS_COLLECTION
 
 _client: AsyncIOMotorClient | None = None
@@ -34,6 +40,33 @@ def get_database() -> AsyncIOMotorDatabase:
 async def ensure_indexes() -> None:
     database = get_database()
     users = database[USERS_COLLECTION]
+    departments = database[DEPARTMENTS_COLLECTION]
+    department_scores = database[DEPARTMENT_SCORES_COLLECTION]
+    activity_logs = database[ACTIVITY_LOGS_COLLECTION]
 
     await users.create_index("clerk_user_id", unique=True)
     await users.create_index("email")
+
+    await departments.create_index("code", unique=True)
+    await departments.create_index("status")
+    await departments.create_index("created_at")
+
+    await department_scores.create_index(
+        [
+            ("department_id", ASCENDING),
+            ("period_year", ASCENDING),
+            ("period_month", ASCENDING),
+        ],
+        unique=True,
+    )
+    await department_scores.create_index(
+        [
+            ("period_year", ASCENDING),
+            ("period_month", ASCENDING),
+            ("total_score", DESCENDING),
+        ]
+    )
+
+    await activity_logs.create_index("created_at")
+    await activity_logs.create_index([("created_at", DESCENDING)])
+    await activity_logs.create_index("type")

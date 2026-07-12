@@ -8,6 +8,7 @@ from jwt import PyJWKClient
 from jwt.exceptions import InvalidTokenError, PyJWKClientError
 
 from app.core.config import settings
+from app.models.user import UserRole
 
 ClerkClaims = dict[str, Any]
 
@@ -89,3 +90,27 @@ async def get_current_clerk_claims(
         )
 
     return decode_clerk_token(credentials.credentials)
+
+
+def get_role_from_claims(claims: ClerkClaims) -> UserRole:
+    metadata = claims.get("metadata")
+
+    if isinstance(metadata, dict):
+        try:
+            return UserRole(metadata.get("role"))
+        except ValueError:
+            pass
+
+    return UserRole.EMPLOYEE
+
+
+async def require_admin_claims(
+    claims: Annotated[ClerkClaims, Depends(get_current_clerk_claims)],
+) -> ClerkClaims:
+    if get_role_from_claims(claims) != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin role is required",
+        )
+
+    return claims

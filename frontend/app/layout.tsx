@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Geist, Geist_Mono } from "next/font/google";
 import { UserSync } from "@/components/auth/user-sync";
+import { ThemeProvider } from "@/components/theme/theme-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -28,11 +29,14 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full bg-slate-50 text-slate-950">
+      <body className="min-h-full bg-[var(--background)] text-[var(--foreground)]">
         <ClerkProvider>
-          <UserSync />
-          {children}
+          <ThemeProvider>
+            <UserSync />
+            {children}
+          </ThemeProvider>
         </ClerkProvider>
       </body>
     </html>

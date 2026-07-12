@@ -1,8 +1,17 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #f8fafc;
-  --foreground: #020617;
+  --background: #f7fbf8;
+  --foreground: #0f172a;
+  color-scheme: light;
+}
+
+.dark {
+  --background: #07130f;
+  --foreground: #e5edf0;
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -15,4 +24,22 @@
 body {
   background: var(--background);
   color: var(--foreground);
+}
+
+.eco-grid-bg {
+  background-image:
+    linear-gradient(to right, rgba(15, 23, 42, 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(15, 23, 42, 0.055) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(236, 253, 245, 0.72), transparent 34rem);
+  background-size:
+    44px 44px,
+    44px 44px,
+    100% 100%;
+}
+
+.dark .eco-grid-bg {
+  background-image:
+    linear-gradient(to right, rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(6, 78, 59, 0.24), transparent 34rem);
 }

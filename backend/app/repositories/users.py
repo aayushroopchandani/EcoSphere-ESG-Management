@@ -72,17 +72,21 @@ async def upsert_user_from_clerk(
     if role is not None:
         set_fields["role"] = role.value
 
+    insert_fields: dict[str, Any] = {
+        "clerk_user_id": clerk_user_id,
+        "xp": 0,
+        "badges": [],
+        "created_at": now,
+    }
+
+    if role is None:
+        insert_fields["role"] = UserRole.EMPLOYEE.value
+
     document = await database[USERS_COLLECTION].find_one_and_update(
         {"clerk_user_id": clerk_user_id},
         {
             "$set": set_fields,
-            "$setOnInsert": {
-                "clerk_user_id": clerk_user_id,
-                "role": UserRole.EMPLOYEE.value,
-                "xp": 0,
-                "badges": [],
-                "created_at": now,
-            },
+            "$setOnInsert": insert_fields,
         },
         return_document=ReturnDocument.AFTER,
         upsert=True,

@@ -19,6 +19,16 @@ The API exposes:
 GET  /health
 GET  /api/users/me
 POST /api/users/sync
+
+GET   /api/departments
+POST  /api/departments
+PATCH /api/departments/{department_id}
+
+GET  /api/dashboard/summary
+GET  /api/dashboard/department-scores
+POST /api/dashboard/department-scores
+
+GET /api/activity-logs/recent
 ```
 
 Clerk-protected routes expect:
