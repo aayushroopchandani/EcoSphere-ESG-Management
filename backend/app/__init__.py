@@ -1,0 +1,1 @@
+"""EcoSphere FastAPI application package."""
