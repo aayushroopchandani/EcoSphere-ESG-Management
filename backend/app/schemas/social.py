@@ -101,3 +101,21 @@ class ParticipationRead(BaseModel):
 
     created_at: datetime
     updated_at: datetime
+
+class ParticipationReviewRequest(BaseModel):
+    approved: bool
+
+
+class LeaderboardUser(BaseModel):
+    clerk_user_id: str
+    first_name: str | None = None
+    last_name: str | None = None
+    email: str | None = None
+    xp: int
+
+class GamificationMeRead(BaseModel):
+    clerk_user_id: str
+    xp: int
+    points: int
+    badges: list[str]
+    rank: int
